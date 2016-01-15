@@ -1,0 +1,222 @@
+#!/bin/bash
+#
+# Copyright (C) 2014 Wenva <lvyexuwenfa100@126.com>
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is furnished
+# to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+set -e
+
+VERSION=1.0
+
+spushd() {
+     pushd "$1" 2>&1> /dev/null
+}
+
+spopd() {
+     popd 2>&1> /dev/null
+}
+
+info() {
+     local green="\033[1;32m"
+     local normal="\033[0m"
+     echo -e "[${green}INFO${normal}] $1"
+}
+
+error() {
+     local red="\033[1;31m"
+     local normal="\033[0m"
+     echo -e "[${red}ERROR${normal}] $1"
+}
+
+# 获取当前目录
+current_dir() {
+    if [ ${0:0:1} = '/' ] || [ ${0:0:1} = '~' ]; then
+        echo "$(dirname $0)"
+    else
+        echo "`pwd`/$(dirname $0)"
+    fi
+}
+
+usage() {
+cat << EOF
+
+USAGE: $0 
+
+DESCRIPTION:
+
+EOF
+}
+
+version() {
+    echo "`basename $0` "$VERSION
+}
+
+check_command() {
+    if [ -z `command -v $1` ];then
+        error "checking for $1... no"
+        return -1
+    else
+        info "checking for $1... yes"
+    fi
+}
+
+# checking for environment
+check_env() {
+    check_command xcodebuild
+    check_command make
+    check_command mkdir
+    check_command test
+    check_command zip
+    check_command rm
+    check_command cp
+}
+
+scheme_list() {
+    echo `xcodebuild -list|sed -n '/Schemes/,/^$/p'|grep -v "Schemes:"|sed 's/^ *//'`
+}
+
+BUILD_CONFIGURATION=Release
+SIMULATOR=0
+PROJECT=`find . -name *.xcodeproj|xargs basename -s .xcodeproj`
+BUILD_DIRECTORY=/tmp/xcodebuild/$PROJECT
+INSTALL_DIRECTORY=./target
+
+param_parse() {
+    while [ -n "$1" ]
+    do
+        case "$1" in
+            -h|--help)
+                usage;exit;;
+            -v|--version)
+                version;exit;;
+            -d|--enable-debug)
+                BUILD_CONFIGURATION=Debug;;
+            -s|--enable-simulator)
+                SIMULATOR=1;;
+            *)
+                echo "Invalid $1";
+                usage;exit;;
+        esac
+        shift;
+    done
+}
+
+pushd `current_dir`
+
+param_parse $*
+
+check_env
+
+SCHEMES=`scheme_list`
+
+# $1 - build configuration
+# $2 - build directory
+makefile_header() {
+configuration=$1
+build_directory=$2
+
+cat << EOF
+generate_ipa=\\
+    rm -rf $build_directory/target/Payload \\
+    mkdir -p $build_directory/target/Payload \\
+    cp -rf $build_directory/Build/Products/$configuration-iphoneos/\$1.app $build_directory/target/Payload \\
+    zip -r $build_directory/target/\$1.ipa $build_directory/target/Payload \\
+    rm -rf $build_directory/target/Payload
+
+generate_lib=\\
+    cp -rf $build_directory/Build/Products/$configuration-iphoneos/lib\$1.a $build_directory/target
+
+generate_framework=\\
+    cp -rf $build_directory/Build/Products/$configuration-iphoneos/\$1.framework $build_directory/target
+
+all: $SCHEMES
+EOF
+
+for scheme in $SCHEMES; do
+    install_dependent="$install_dependent $scheme-install"
+    clean_dependent="$clean_dependent $scheme-clean"
+done
+cat << EOF
+clean:$clean_dependent
+install:$install_dependent
+EOF
+}
+
+makefile_scheme() {
+scheme=$1
+configuration=$2
+build_directory=$3
+install_directory=$4
+
+cat << EOF
+
+$1-device:
+`printf "\t"`xcodebuild -configuration $configuration -scheme $1 -derivedDataPath $build_directory -sdk iphoneos
+EOF
+
+if [ $SIMULATOR -eq "1" ]; then
+cat << EOF
+$1-simulator:
+`printf "\t"`xcodebuild -configuration $configuration -scheme $1 -derivedDataPath $build_directory -sdk iphonesimulator
+$1:$1-device $1-simulator
+EOF
+else
+cat << EOF
+$1:$1-device
+EOF
+fi
+
+cat << EOF
+`printf "\t"`@mkdir -p $build_directory/target
+`printf "\t"`@test ! -d $build_directory/Build/Products/$configuration-iphoneos/$scheme.app || \$(call generate_ipa,$scheme)
+`printf "\t"`@test ! -f $build_directory/Build/Products/$configuration-iphoneos/lib$scheme.a || \$(call generate_lib,$scheme)
+`printf "\t"`@test ! -d $build_directory/Build/Products/$configuration-iphoneos/$scheme.framework || \$(call generate_framework,$scheme)
+EOF
+
+# clean
+cat << EOF
+$1-clean:
+`printf "\t"`xcodebuild clean -configuration $configuration -scheme $1 -derivedDataPath $build_directory -sdk iphoneos
+EOF
+
+if [ $SIMULATOR -eq "1" ]; then
+cat << EOF
+`printf "\t"`xcodebuild clean -configuration $configuration -scheme $1 -derivedDataPath $build_directory -sdk iphonesimulator
+EOF
+fi
+
+# install
+cat << EOF
+$1-install:$1
+`printf "\t"`@mkdir -p $install_directory
+`printf "\t"`@test ! -f $build_directory/target/$scheme.ipa || cp -rf $build_directory/target/$scheme.ipa $install_directory
+`printf "\t"`@test ! -f $build_directory/target/lib$scheme.a || cp -rf $build_directory/target/lib$scheme.a $install_directory
+`printf "\t"`@test ! -d $build_directory/target/$scheme.framework || cp -rf $build_directory/target/$scheme.framework $install_directory
+
+EOF
+
+}
+
+info "build into $BUILD_DIRECTORY ..."
+makefile_header $BUILD_CONFIGURATION $BUILD_DIRECTORY $INSTALL_DIRECTORY > Makefile
+for scheme in $SCHEMES; do
+    makefile_scheme $scheme $BUILD_CONFIGURATION $BUILD_DIRECTORY $INSTALL_DIRECTORY>> Makefile
+done
+
+popd
