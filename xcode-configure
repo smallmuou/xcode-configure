@@ -146,7 +146,10 @@ generate_lib=\\
     fi
 
 generate_framework=\\
-    cp -rf "$build_directory/Build/Products/$configuration-iphoneos/\$1.framework" "$build_directory/target"
+    cp -rf "$build_directory/Build/Products/$configuration-iphoneos/\$1.framework" "$build_directory/target";\\
+    if [ $ENABLE_SIMULATOR -eq "1" ]; then \\
+        lipo -create "$build_directory/Build/Products/$configuration-iphoneos/\$1.framework/\$1" "$build_directory/Build/Products/$configuration-iphonesimulator/\$1.framework/\$1" -output "$build_directory/target/\$1.framework/\$1";\\
+    fi
 
 all: $SCHEMES
 EOF
