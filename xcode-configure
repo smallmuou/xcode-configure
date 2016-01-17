@@ -96,6 +96,15 @@ ENABLE_SIMULATOR=0
 PROJECT=`find . -name *.xcodeproj|xargs basename -s .xcodeproj`
 BUILD_DIRECTORY=/tmp/xcodebuild/$PROJECT
 INSTALL_DIRECTORY=./target
+PHONY=
+
+phony_add() {
+    while [ -n "$1" ]
+    do
+        PHONY="$PHONY $1"        
+        shift;
+    done
+}
 
 param_parse() {
     while [ -n "$1" ]
@@ -154,10 +163,16 @@ generate_framework=\\
 all: $SCHEMES
 EOF
 
+phony_add all
+
 for scheme in $SCHEMES; do
+    phony_add $scheme  
     install_dependent="$install_dependent $scheme-install"
     clean_dependent="$clean_dependent $scheme-clean"
 done
+
+phony_add $install_dependent $clean_dependent
+
 cat << EOF
 clean:$clean_dependent
 `printf "\t"`@rm -rf "$INSTALL_DIRECTORY"
@@ -167,6 +182,8 @@ install_prepare:
 
 install:install_prepare $install_dependent
 EOF
+
+phony_add install_prepare clean install
 }
 
 makefile_scheme() {
@@ -175,6 +192,8 @@ configuration=$2
 build_directory=$3
 install_directory=$4
 
+phony_add $1-device
+
 cat << EOF
 
 $1-device:
@@ -182,6 +201,8 @@ $1-device:
 EOF
 
 if [ $ENABLE_SIMULATOR -eq "1" ]; then
+phony_add $1-simulator
+
 cat << EOF
 $1-simulator:
 `printf "\t"`xcodebuild -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
@@ -231,10 +252,17 @@ EOF
 
 }
 
+makefile_footer() {
+cat << EOF
+.PHONY: $PHONY
+EOF
+}
+
 info "build into $BUILD_DIRECTORY ..."
 makefile_header "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY" > Makefile
 for scheme in $SCHEMES; do
     makefile_scheme "$scheme" "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY">> Makefile
 done
+makefile_footer >> Makefile
 
 info 'generate makefile done. type make & make install'
