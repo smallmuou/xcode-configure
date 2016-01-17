@@ -22,7 +22,7 @@
 
 set -e
 
-VERSION=1.0
+VERSION=1.0.0
 
 spushd() {
      pushd "$1" 2>&1> /dev/null
@@ -92,7 +92,7 @@ scheme_list() {
 }
 
 BUILD_CONFIGURATION=Release
-SIMULATOR=0
+ENABLE_SIMULATOR=0
 PROJECT=`find . -name *.xcodeproj|xargs basename -s .xcodeproj`
 BUILD_DIRECTORY=/tmp/xcodebuild/$PROJECT
 INSTALL_DIRECTORY=./target
@@ -108,7 +108,7 @@ param_parse() {
             -d|--enable-debug)
                 BUILD_CONFIGURATION=Debug;;
             -s|--enable-simulator)
-                SIMULATOR=1;;
+                ENABLE_SIMULATOR=1;;
             *)
                 echo "Invalid $1";
                 usage;exit;;
@@ -138,10 +138,15 @@ generate_ipa=\\
     rm -rf "$build_directory/target/Payload"
 
 generate_lib=\\
-    cp -rf $build_directory/Build/Products/$configuration-iphoneos/lib\$1.a $build_directory/target
+    mkdir -p "$build_directory/target/\$1/include";\\
+    cp -rf "$build_directory/Build/Products/$configuration-iphoneos/include/\$1" "$build_directory/target/\$1/include";\\
+    cp -rf "$build_directory/Build/Products/$configuration-iphoneos/lib\$1.a" "$build_directory/target/\$1"; \\
+    if [ $ENABLE_SIMULATOR -eq "1" ]; then \\
+        lipo -create "$build_directory/Build/Products/$configuration-iphoneos/lib\$1.a" "$build_directory/Build/Products/$configuration-iphonesimulator/lib\$1.a" -output "$build_directory/target/\$1/lib\$1.a";\\
+    fi
 
 generate_framework=\\
-    cp -rf $build_directory/Build/Products/$configuration-iphoneos/\$1.framework $build_directory/target
+    cp -rf "$build_directory/Build/Products/$configuration-iphoneos/\$1.framework" "$build_directory/target"
 
 all: $SCHEMES
 EOF
@@ -173,7 +178,7 @@ $1-device:
 `printf "\t"`xcodebuild -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
 EOF
 
-if [ $SIMULATOR -eq "1" ]; then
+if [ $ENABLE_SIMULATOR -eq "1" ]; then
 cat << EOF
 $1-simulator:
 `printf "\t"`xcodebuild -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
@@ -186,17 +191,17 @@ EOF
 fi
 
 cat << EOF
-`printf "\t"`@mkdir -p $build_directory/target
+`printf "\t"`@mkdir -p "$build_directory/target"
 `printf "\t"`@if test -d "$build_directory/Build/Products/$configuration-iphoneos/$scheme.app"; then \\
-`printf "\t"``printf "\t"`\$(call generate_ipa,"$scheme"); \\
+`printf "\t\t"`\$(call generate_ipa,$scheme); \\
 `printf "\t"`fi
 
 `printf "\t"`@if test -f "$build_directory/Build/Products/$configuration-iphoneos/lib$scheme.a"; then \\
-`printf "\t"``printf "\t"`\$(call generate_lib,"$scheme"); \\
+`printf "\t\t"`\$(call generate_lib,$scheme); \\
 `printf "\t"`fi
 
 `printf "\t"`@if test -d "$build_directory/Build/Products/$configuration-iphoneos/$scheme.framework"; then \\
-`printf "\t"``printf "\t"`\$(call generate_framework,"$scheme"); \\
+`printf "\t\t"`\$(call generate_framework,$scheme); \\
 `printf "\t"`fi
 EOF
 
@@ -206,7 +211,7 @@ $1-clean:
 `printf "\t"`xcodebuild clean -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
 EOF
 
-if [ $SIMULATOR -eq "1" ]; then
+if [ $ENABLE_SIMULATOR -eq "1" ]; then
 cat << EOF
 `printf "\t"`xcodebuild clean -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
 EOF
@@ -216,7 +221,7 @@ fi
 cat << EOF
 $1-install:$1
 `printf "\t"`@test ! -f "$build_directory/target/$scheme.ipa" || cp -rf "$build_directory/target/$scheme.ipa" "$install_directory"
-`printf "\t"`@test ! -f "$build_directory/target/lib$scheme.a" || cp -rf "$build_directory/target/lib$scheme.a" "$install_directory"
+`printf "\t"`@test ! -d "$build_directory/target/$scheme" || cp -rf "$build_directory/target/$scheme" "$install_directory"
 `printf "\t"`@test ! -d "$build_directory/target/$scheme.framework" || cp -rf "$build_directory/target/$scheme.framework" "$install_directory"
 
 EOF
@@ -229,3 +234,4 @@ for scheme in $SCHEMES; do
     makefile_scheme "$scheme" "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY">> Makefile
 done
 
+info 'generate makefile done. type make & make install'
