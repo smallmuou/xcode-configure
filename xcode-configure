@@ -117,8 +117,6 @@ param_parse() {
     done
 }
 
-pushd `current_dir`
-
 param_parse $*
 
 check_env
@@ -133,11 +131,11 @@ build_directory=$2
 
 cat << EOF
 generate_ipa=\\
-    rm -rf $build_directory/target/Payload \\
-    mkdir -p $build_directory/target/Payload \\
-    cp -rf $build_directory/Build/Products/$configuration-iphoneos/\$1.app $build_directory/target/Payload \\
-    zip -r $build_directory/target/\$1.ipa $build_directory/target/Payload \\
-    rm -rf $build_directory/target/Payload
+    rm -rf "$build_directory/target/Payload"; \\
+    mkdir -p "$build_directory/target/Payload"; \\
+    cp -rf "$build_directory/Build/Products/$configuration-iphoneos/\$1.app" "$build_directory/target/Payload"; \\
+    zip -r "$build_directory/target/\$1.ipa" "$build_directory/target/Payload"; \\
+    rm -rf "$build_directory/target/Payload"
 
 generate_lib=\\
     cp -rf $build_directory/Build/Products/$configuration-iphoneos/lib\$1.a $build_directory/target
@@ -154,7 +152,12 @@ for scheme in $SCHEMES; do
 done
 cat << EOF
 clean:$clean_dependent
-install:$install_dependent
+`printf "\t"`@rm -rf "$INSTALL_DIRECTORY"
+
+install_prepare:
+`printf "\t"`@mkdir -p "$INSTALL_DIRECTORY"
+
+install:install_prepare $install_dependent
 EOF
 }
 
@@ -167,13 +170,13 @@ install_directory=$4
 cat << EOF
 
 $1-device:
-`printf "\t"`xcodebuild -configuration $configuration -scheme $1 -derivedDataPath $build_directory -sdk iphoneos
+`printf "\t"`xcodebuild -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
 EOF
 
 if [ $SIMULATOR -eq "1" ]; then
 cat << EOF
 $1-simulator:
-`printf "\t"`xcodebuild -configuration $configuration -scheme $1 -derivedDataPath $build_directory -sdk iphonesimulator
+`printf "\t"`xcodebuild -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
 $1:$1-device $1-simulator
 EOF
 else
@@ -184,39 +187,45 @@ fi
 
 cat << EOF
 `printf "\t"`@mkdir -p $build_directory/target
-`printf "\t"`@test ! -d $build_directory/Build/Products/$configuration-iphoneos/$scheme.app || \$(call generate_ipa,$scheme)
-`printf "\t"`@test ! -f $build_directory/Build/Products/$configuration-iphoneos/lib$scheme.a || \$(call generate_lib,$scheme)
-`printf "\t"`@test ! -d $build_directory/Build/Products/$configuration-iphoneos/$scheme.framework || \$(call generate_framework,$scheme)
+`printf "\t"`@if test -d "$build_directory/Build/Products/$configuration-iphoneos/$scheme.app"; then \\
+`printf "\t"``printf "\t"`\$(call generate_ipa,"$scheme"); \\
+`printf "\t"`fi
+
+`printf "\t"`@if test -f "$build_directory/Build/Products/$configuration-iphoneos/lib$scheme.a"; then \\
+`printf "\t"``printf "\t"`\$(call generate_lib,"$scheme"); \\
+`printf "\t"`fi
+
+`printf "\t"`@if test -d "$build_directory/Build/Products/$configuration-iphoneos/$scheme.framework"; then \\
+`printf "\t"``printf "\t"`\$(call generate_framework,"$scheme"); \\
+`printf "\t"`fi
 EOF
 
 # clean
 cat << EOF
 $1-clean:
-`printf "\t"`xcodebuild clean -configuration $configuration -scheme $1 -derivedDataPath $build_directory -sdk iphoneos
+`printf "\t"`xcodebuild clean -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
 EOF
 
 if [ $SIMULATOR -eq "1" ]; then
 cat << EOF
-`printf "\t"`xcodebuild clean -configuration $configuration -scheme $1 -derivedDataPath $build_directory -sdk iphonesimulator
+`printf "\t"`xcodebuild clean -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
 EOF
 fi
 
 # install
 cat << EOF
 $1-install:$1
-`printf "\t"`@mkdir -p $install_directory
-`printf "\t"`@test ! -f $build_directory/target/$scheme.ipa || cp -rf $build_directory/target/$scheme.ipa $install_directory
-`printf "\t"`@test ! -f $build_directory/target/lib$scheme.a || cp -rf $build_directory/target/lib$scheme.a $install_directory
-`printf "\t"`@test ! -d $build_directory/target/$scheme.framework || cp -rf $build_directory/target/$scheme.framework $install_directory
+`printf "\t"`@test ! -f "$build_directory/target/$scheme.ipa" || cp -rf "$build_directory/target/$scheme.ipa" "$install_directory"
+`printf "\t"`@test ! -f "$build_directory/target/lib$scheme.a" || cp -rf "$build_directory/target/lib$scheme.a" "$install_directory"
+`printf "\t"`@test ! -d "$build_directory/target/$scheme.framework" || cp -rf "$build_directory/target/$scheme.framework" "$install_directory"
 
 EOF
 
 }
 
 info "build into $BUILD_DIRECTORY ..."
-makefile_header $BUILD_CONFIGURATION $BUILD_DIRECTORY $INSTALL_DIRECTORY > Makefile
+makefile_header "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY" > Makefile
 for scheme in $SCHEMES; do
-    makefile_scheme $scheme $BUILD_CONFIGURATION $BUILD_DIRECTORY $INSTALL_DIRECTORY>> Makefile
+    makefile_scheme "$scheme" "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY">> Makefile
 done
 
-popd
