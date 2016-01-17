@@ -94,9 +94,14 @@ scheme_list() {
 BUILD_CONFIGURATION=Release
 ENABLE_SIMULATOR=0
 PROJECT=`find . -name *.xcodeproj|xargs basename -s .xcodeproj`
+WORKSPACE=`find . -name *.xcworkspace|xargs basename`
 BUILD_DIRECTORY=/tmp/xcodebuild/$PROJECT
 INSTALL_DIRECTORY=./target
 PHONY=
+
+if [ -n "$WORKSPACE" ]; then
+    BUILD_WORKSPACE="-workspace \"$WORKSPACE\""
+fi
 
 phony_add() {
     while [ -n "$1" ]
@@ -197,7 +202,7 @@ phony_add $1-device
 cat << EOF
 
 $1-device:
-`printf "\t"`xcodebuild -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
+`printf "\t"`xcodebuild $BUILD_WORKSPACE -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
 EOF
 
 if [ $ENABLE_SIMULATOR -eq "1" ]; then
@@ -205,7 +210,7 @@ phony_add $1-simulator
 
 cat << EOF
 $1-simulator:
-`printf "\t"`xcodebuild -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
+`printf "\t"`xcodebuild $BUILD_WORKSPACE -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
 $1:$1-device $1-simulator
 EOF
 else
@@ -232,12 +237,12 @@ EOF
 # clean
 cat << EOF
 $1-clean:
-`printf "\t"`xcodebuild clean -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
+`printf "\t"`xcodebuild clean $BUILD_WORKSPACE -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
 EOF
 
 if [ $ENABLE_SIMULATOR -eq "1" ]; then
 cat << EOF
-`printf "\t"`xcodebuild clean -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
+`printf "\t"`xcodebuild clean $BUILD_WORKSPACE -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
 EOF
 fi
 
