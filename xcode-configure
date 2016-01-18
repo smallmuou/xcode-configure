@@ -193,6 +193,8 @@ param_parse() {
                 BUILD_CONFIGURATION=Debug;;
             -s|--enable-simulator)
                 ENABLE_SIMULATOR=1;;
+            -p|--prefix)
+                INSTALL_DIRECTORY=$2;shift;;
             *)
                 echo "Invalid $1";
                 usage;exit;;
