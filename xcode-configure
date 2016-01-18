@@ -87,21 +87,91 @@ check_env() {
     check_command cp
 }
 
-scheme_list() {
-    echo `xcodebuild -list|sed -n '/Schemes/,/^$/p'|grep -v "Schemes:"|sed 's/^ *//'`
-}
-
 BUILD_CONFIGURATION=Release
 ENABLE_SIMULATOR=0
-PROJECT=`find . -name *.xcodeproj|xargs basename -s .xcodeproj`
-WORKSPACE=`find . -name *.xcworkspace|xargs basename`
-BUILD_DIRECTORY=/tmp/xcodebuild/$PROJECT
+WORKSPACES_COUNT=`ls|awk '/.xcworkspace/{print $0}'|awk 'BEGIN{t=0;} {t++;}  END{print t;}'`
+PROJECTS_COUNT=`ls|awk '/.xcodeproj/{print $0}'|awk 'BEGIN{t=0;} {t++;}  END{print t;}'`
 INSTALL_DIRECTORY=./target
+BUILD_DIRECTORY=/tmp/xcodebuild/`pwd|xargs basename`
 PHONY=
 
-if [ -n "$WORKSPACE" ]; then
-    BUILD_WORKSPACE="-workspace \"$WORKSPACE\""
-fi
+# select project
+
+project_parse() {
+    if [ $WORKSPACES_COUNT -gt 1 ];then
+        index=0
+        echo -e '\nPlease select a workspace to configure'
+        i=0
+        for item in `ls|awk '/.xcworkspace/{print "\""$0"\""}'|xargs basename |sed 's/ /__-__/g'`; do
+            WORKSPACES[i]=`echo $item|sed 's/__-__/ /g'`
+            echo [$i] - ${WORKSPACES[i]}
+            i=$(($i+1))
+        done
+        echo -e 'Please choose an option [0] :\c' 
+        read index
+
+        if [ -z "$index" ];then
+        index=0
+        fi
+
+        if [ -n "`echo $index | sed 's/[0-9]//g'`" ];then
+            error "Invalid Option."
+            exit
+        fi
+
+        if [ $index -ge $WORKSPACES_COUNT -o $index -lt 0 ];then
+            error "Invalid Option."
+            exit
+        fi
+        WORKSPACE=${WORKSPACES[$index]}
+    elif [ $WORKSPACES_COUNT -lt 1 ];then
+        index=0
+        if [ $PROJECTS_COUNT -gt 1 ];then
+            echo -e '\nPlease select a project to configure'
+            i=0
+            for item in `ls|awk '/.xcodeproj/{print "\""$0"\""}'|xargs basename|sed 's/ /__-__/g'`; do
+                PROJECTS[i]=`echo $item|sed 's/__-__/ /g'`
+                echo [$i] - ${PROJECTS[i]}
+                i=$(($i+1))
+            done
+            echo -e 'Please choose an option [0] :\c' 
+            read index
+
+            if [ -z "$index" ];then
+                index=0
+            fi
+
+            if [ -n "`echo $index | sed 's/[0-9]//g'`" ];then
+                error "Invalid Option."
+                exit
+            fi
+
+            if [ $index -ge $PROJECTS_COUNT -o $index -lt 0 ];then
+                error "Invalid Option."
+                exit
+            fi
+            PROJECT=${PROJECTS[$index]}
+        elif [ $PROJECTS_COUNT -lt 1 ];then
+            PROJECT=`ls|awk '/.xcodeproj/{print "\""$0"\""}'|xargs basename`
+        else 
+            error 'No xcode project'
+            exit
+        fi
+        PROJECT=${PROJECTS[$index]}
+    else
+        WORKSPACE=`ls|awk '/.xcodeproj/{print "\""$0"\""}'|xargs basename`
+    fi
+
+
+    if [ -n "$PROJECT" ];then
+        BUILD_PROJECT="-project \"$PROJECT\""
+    fi
+
+    if [ -n "$WORKSPACE" ];then
+        BUILD_WORKSPACE="-workspace '$WORKSPACE'"
+    fi
+}
+
 
 phony_add() {
     while [ -n "$1" ]
@@ -133,15 +203,15 @@ param_parse() {
 
 param_parse $*
 
-check_env
-
-SCHEMES=`scheme_list`
-
 # $1 - build configuration
 # $2 - build directory
+# $3 - install directory
+# $4 - schemes
 makefile_header() {
 configuration=$1
 build_directory=$2
+install_directory=$3
+schemes=$4
 
 cat << EOF
 generate_ipa=\\
@@ -165,7 +235,7 @@ generate_framework=\\
         lipo -create "$build_directory/Build/Products/$configuration-iphoneos/\$1.framework/\$1" "$build_directory/Build/Products/$configuration-iphonesimulator/\$1.framework/\$1" -output "$build_directory/target/\$1.framework/\$1";\\
     fi
 
-all: $SCHEMES
+all: `echo $schemes`
 EOF
 
 phony_add all
@@ -180,10 +250,10 @@ phony_add $install_dependent $clean_dependent
 
 cat << EOF
 clean:$clean_dependent
-`printf "\t"`@rm -rf "$INSTALL_DIRECTORY"
+`printf "\t"`@rm -rf "$install_directory"
 
 install_prepare:
-`printf "\t"`@mkdir -p "$INSTALL_DIRECTORY"
+`printf "\t"`@mkdir -p "$install_directory"
 
 install:install_prepare $install_dependent
 EOF
@@ -202,7 +272,7 @@ phony_add $1-device
 cat << EOF
 
 $1-device:
-`printf "\t"`xcodebuild $BUILD_WORKSPACE -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
+`printf "\t"`xcodebuild $BUILD_WORKSPACE $BUILD_PROJECT -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
 EOF
 
 if [ $ENABLE_SIMULATOR -eq "1" ]; then
@@ -210,7 +280,7 @@ phony_add $1-simulator
 
 cat << EOF
 $1-simulator:
-`printf "\t"`xcodebuild $BUILD_WORKSPACE -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
+`printf "\t"`xcodebuild $BUILD_WORKSPACE $BUILD_PROJECT  -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
 $1:$1-device $1-simulator
 EOF
 else
@@ -237,12 +307,12 @@ EOF
 # clean
 cat << EOF
 $1-clean:
-`printf "\t"`xcodebuild clean $BUILD_WORKSPACE -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
+`printf "\t"`xcodebuild clean $BUILD_WORKSPACE $BUILD_PROJECT -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
 EOF
 
 if [ $ENABLE_SIMULATOR -eq "1" ]; then
 cat << EOF
-`printf "\t"`xcodebuild clean $BUILD_WORKSPACE -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
+`printf "\t"`xcodebuild clean $BUILD_WORKSPACE $BUILD_PROJECT -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
 EOF
 fi
 
@@ -263,8 +333,19 @@ cat << EOF
 EOF
 }
 
+project_parse
+
+check_env
+
+if [ -n "$WORKSPACE" ];then
+    SCHEMES=`xcodebuild -workspace "$WORKSPACE" -list|sed -n '/Schemes/,/^$/p'|grep -v "Schemes:"|sed 's/^ *//'`
+elif [ -n "$PROJECT" ];then
+    SCHEMES=`xcodebuild -project "$PROJECT" -list|sed -n '/Schemes/,/^$/p'|grep -v "Schemes:"|sed 's/^ *//'`    
+fi
+
 info "build into $BUILD_DIRECTORY ..."
-makefile_header "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY" > Makefile
+makefile_header "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY" "$SCHEMES" > Makefile
+
 for scheme in $SCHEMES; do
     makefile_scheme "$scheme" "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY">> Makefile
 done
