@@ -85,6 +85,11 @@ check_env() {
     check_command zip
     check_command rm
     check_command cp
+    check_command awk
+    check_command ls
+    check_command pwd
+    check_command sed
+    check_command lipo
 }
 
 BUILD_CONFIGURATION=Release
@@ -236,13 +241,14 @@ generate_framework=\\
         lipo -create "$build_directory/Build/Products/$configuration-iphoneos/\$1.framework/\$1" "$build_directory/Build/Products/$configuration-iphonesimulator/\$1.framework/\$1" -output "$build_directory/target/\$1.framework/\$1";\\
     fi
 
-all: `echo $schemes`
 EOF
 
 phony_add all
 
-for scheme in $SCHEMES; do
-    phony_add $scheme  
+for scheme in $schemes; do
+    scheme=`echo $scheme|sed 's/__-__/\\\\ /g'`
+    original_schemes="$original_schemes $scheme"
+    phony_add $scheme
     install_dependent="$install_dependent $scheme-install"
     clean_dependent="$clean_dependent $scheme-clean"
 done
@@ -250,6 +256,8 @@ done
 phony_add $install_dependent $clean_dependent
 
 cat << EOF
+all: $original_schemes
+
 clean:$clean_dependent
 `printf "\t"`@rm -rf "$install_directory"
 
@@ -273,7 +281,7 @@ phony_add $1-device
 cat << EOF
 
 $1-device:
-`printf "\t"`xcodebuild $BUILD_WORKSPACE $BUILD_PROJECT -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
+`printf "\t"`xcodebuild $BUILD_WORKSPACE $BUILD_PROJECT -configuration "$configuration" -scheme $1 -derivedDataPath "$build_directory" -sdk iphoneos
 EOF
 
 if [ $ENABLE_SIMULATOR -eq "1" ]; then
@@ -281,7 +289,7 @@ phony_add $1-simulator
 
 cat << EOF
 $1-simulator:
-`printf "\t"`xcodebuild $BUILD_WORKSPACE $BUILD_PROJECT  -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
+`printf "\t"`xcodebuild $BUILD_WORKSPACE $BUILD_PROJECT  -configuration "$configuration" -scheme $1 -derivedDataPath "$build_directory" -sdk iphonesimulator
 $1:$1-device $1-simulator
 EOF
 else
@@ -308,12 +316,12 @@ EOF
 # clean
 cat << EOF
 $1-clean:
-`printf "\t"`xcodebuild clean $BUILD_WORKSPACE $BUILD_PROJECT -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphoneos
+`printf "\t"`xcodebuild clean $BUILD_WORKSPACE $BUILD_PROJECT -configuration "$configuration" -scheme $1 -derivedDataPath "$build_directory" -sdk iphoneos
 EOF
 
 if [ $ENABLE_SIMULATOR -eq "1" ]; then
 cat << EOF
-`printf "\t"`xcodebuild clean $BUILD_WORKSPACE $BUILD_PROJECT -configuration "$configuration" -scheme "$1" -derivedDataPath "$build_directory" -sdk iphonesimulator
+`printf "\t"`xcodebuild clean $BUILD_WORKSPACE $BUILD_PROJECT -configuration "$configuration" -scheme $1 -derivedDataPath "$build_directory" -sdk iphonesimulator
 EOF
 fi
 
@@ -339,16 +347,16 @@ project_parse
 check_env
 
 if [ -n "$WORKSPACE" ];then
-    SCHEMES=`xcodebuild -workspace "$WORKSPACE" -list|sed -n '/Schemes/,/^$/p'|grep -v "Schemes:"|sed 's/^ *//'`
+    SCHEMES=`xcodebuild -workspace "$WORKSPACE" -list|sed -n '/Schemes/,/^$/p'|grep -v "Schemes:"|sed 's/^ *//'|sed 's/ /__-__/g'`
 elif [ -n "$PROJECT" ];then
-    SCHEMES=`xcodebuild -project "$PROJECT" -list|sed -n '/Schemes/,/^$/p'|grep -v "Schemes:"|sed 's/^ *//'`    
+    SCHEMES=`xcodebuild -project "$PROJECT" -list|sed -n '/Schemes/,/^$/p'|grep -v "Schemes:"|sed 's/^ *//'|sed 's/ /__-__/g'`    
 fi
 
 info "build into $BUILD_DIRECTORY ..."
 makefile_header "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY" "$SCHEMES" > Makefile
 
 for scheme in $SCHEMES; do
-    makefile_scheme "$scheme" "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY">> Makefile
+    makefile_scheme "`echo $scheme|sed 's/__-__/\\\\ /g'`" "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY">> Makefile
 done
 makefile_footer >> Makefile
 
