@@ -151,13 +151,12 @@ project_parse() {
                 exit
             fi
             PROJECT=${PROJECTS[$index]}
-        elif [ $PROJECTS_COUNT -lt 1 ];then
+        elif [ $PROJECTS_COUNT -eq 1 ];then
             PROJECT=`ls|awk '/.xcodeproj/{print "\""$0"\""}'|xargs basename`
         else 
             error 'No xcode project'
             exit
         fi
-        PROJECT=${PROJECTS[$index]}
     else
         WORKSPACE=`ls|awk '/.xcodeproj/{print "\""$0"\""}'|xargs basename`
     fi
