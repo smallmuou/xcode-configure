@@ -331,6 +331,7 @@ $1-install:$1
 `printf "\t"`@test ! -f "$build_directory/target/$scheme.ipa" || cp -rf "$build_directory/target/$scheme.ipa" "$install_directory"
 `printf "\t"`@test ! -d "$build_directory/target/$scheme" || cp -rf "$build_directory/target/$scheme" "$install_directory"
 `printf "\t"`@test ! -d "$build_directory/target/$scheme.framework" || cp -rf "$build_directory/target/$scheme.framework" "$install_directory"
+`printf "\t"`@echo "Installed to $install_directory..."
 
 EOF
 
