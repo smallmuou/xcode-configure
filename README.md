@@ -5,7 +5,8 @@ This command can generate makefile to build xcode project in command line just l
 ![image](https://github.com/smallmuou/xcode-configure/blob/master/xcode-configure.gif)
 
 ### Why?
-
+* Build xcode project more easily.
+* Combine thirdpart library more easily.
 
 ### How?
 * Config
@@ -15,7 +16,6 @@ This command can generate makefile to build xcode project in command line just l
 * Usage
 <pre>
 USAGE: xcode-configure [-v|--version] [-h|--help] [-s|--enable-simulator] [-d|--enable-debug] [-p|--prefix < install directory >]
-
 OPTION:
 -v|--version                    show the version
 -h|--help                       show the help
@@ -23,3 +23,9 @@ OPTION:
 -d|--enable-debug               enable debug
 -p|--prefix PATH                assign the directory for install(default is ./target)
 </pre>
+
+### License?
+This command follow MIT License.
+
+### Contact?
+If you has any problem with use it, you can contact me. My E-mail is smallmuou@163.com
