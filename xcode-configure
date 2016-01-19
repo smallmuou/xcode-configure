@@ -22,6 +22,7 @@
 
 set -e
 
+AUTHOR="smallmuou<smallmuou@163.com>"
 VERSION=1.0.0
 
 spushd() {
@@ -55,16 +56,25 @@ current_dir() {
 
 usage() {
 cat << EOF
+`version`
 
-USAGE: $0 
+USAGE: `basename $0` [-v|--version] [-h|--help] [-s|--enable-simulator] [-d|--enable-debug] [-p|--prefix <install directory>]
 
 DESCRIPTION:
+This command can generate makefile to build xcode project in command line just like <configure & make & make install> in C/C++ language world.
+
+OPTION:
+-v|--version                    show the version
+-h|--help                       show the help
+-s|--enable-simulator           enable simulator
+-d|--enable-debug               enable debug
+-p|--prefix PATH                assign the directory for install(default is ./target)
 
 EOF
 }
 
 version() {
-    echo "`basename $0` "$VERSION
+    echo "`basename $0` $VERSION by $AUTHOR"
 }
 
 check_command() {
