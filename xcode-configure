@@ -269,7 +269,6 @@ cat << EOF
 all: $original_schemes
 
 clean:$clean_dependent
-`printf "\t"`@rm -rf "$install_directory"
 
 install_prepare:
 `printf "\t"`@mkdir -p "$install_directory"
