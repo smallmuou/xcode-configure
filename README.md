@@ -28,6 +28,74 @@ OPTION:
 -p|--prefix PATH                assign the directory for install(default is ./target)
 </pre>
 
+### Tips?
+* show version
+	<pre>
+xcode-configure -v
+or 
+xcode-configure --version
+</pre>
+
+* show help
+	<pre>
+xcode-configure -h
+or 
+xcode-configure --help
+</pre>
+
+* config for debug mode
+	<pre>
+xcode-configure -d
+or
+xcode-configure --enable-debug
+</pre>
+
+* support simulator
+	<pre>
+xcode-configure -s
+or
+xcode-configure --enable-simulator
+</pre>
+
+* assign a install directory
+	<pre>
+xcode-configure -p PATH
+or
+xcode-configure --prefix PATH
+</pre>
+
+
+* build all scheme
+	<pre>
+make
+</pre>
+
+* build a special scheme, like `test`
+	<pre>
+make test
+</pre>
+
+* install all scheme
+	<pre>
+make install
+</pre>
+
+* install a special scheme, like `test`
+	<pre>
+make test-install
+</pre>
+
+* clean all scheme
+	<pre>
+make clean
+</pre>
+
+* clean a special scheme, like `test`
+	<pre>
+make test-clean
+</pre>
+
+
 ### License?
 This command follow MIT License.
 
