@@ -64,8 +64,7 @@ or
 xcode-configure --prefix PATH
 </pre>
 
-
-* build all scheme
+* build all scheme (you can use `xcodebuild -list` to show all scheme)
 	<pre>
 make
 </pre>
