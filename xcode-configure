@@ -61,7 +61,7 @@ cat << EOF
 USAGE: `basename $0` [-v|--version] [-h|--help] [-s|--enable-simulator] [-d|--enable-debug] [-p|--prefix <install directory>]
 
 DESCRIPTION:
-This command can generate makefile to build xcode project in command line just like <configure & make & make install> in C/C++ language world.
+This command can generate makefile to build xcode project in command line just like <configure && make && make install> in C/C++ language world.
 
 OPTION:
 -v|--version                    show the version
@@ -370,4 +370,4 @@ for scheme in $SCHEMES; do
 done
 makefile_footer >> Makefile
 
-info 'generate makefile done. type make & make install'
+info 'generate makefile done. type make && make install'
