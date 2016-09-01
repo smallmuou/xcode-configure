@@ -177,7 +177,7 @@ project_parse() {
             exit
         fi
     else
-        WORKSPACE=`ls|awk '/.xcodeproj/{print "\""$0"\""}'|xargs basename`
+        WORKSPACE=`ls|awk '/.xcworkspace/{print "\""$0"\""}'|xargs basename` 
     fi
 
 
