@@ -23,7 +23,7 @@
 set -e
 
 AUTHOR="smallmuou<smallmuou@163.com>"
-VERSION=1.0.0
+VERSION=1.0.1
 
 spushd() {
      pushd "$1" 2>&1> /dev/null
@@ -58,12 +58,18 @@ usage() {
 cat << EOF
 `version`
 
-USAGE: `basename $0` [-v|--version] [-h|--help] [-s|--enable-simulator] [-d|--enable-debug] [-p|--prefix <install directory>]
+USAGE: `basename $0` [-t|--target] [-v|--version] [-h|--help] [-s|--enable-simulator] [-d|--enable-debug] [-p|--prefix <install directory>]
 
 DESCRIPTION:
 This command can generate makefile to build xcode project in command line just like <configure && make && make install> in C/C++ language world.
 
+configure:  xcode-configure
+make:       make [target] 
+install:    make [target-]install
+clean:      make [target-]clean
+
 OPTION:
+-t|--target                     show all targets
 -v|--version                    show the version
 -h|--help                       show the help
 -s|--enable-simulator           enable simulator
@@ -80,9 +86,6 @@ version() {
 check_command() {
     if [ -z `command -v $1` ];then
         error "checking for $1... no"
-        return -1
-    else
-        info "checking for $1... yes"
     fi
 }
 
@@ -106,8 +109,9 @@ BUILD_CONFIGURATION=Release
 ENABLE_SIMULATOR=0
 WORKSPACES_COUNT=`ls|awk '/.xcworkspace/{print $0}'|awk 'BEGIN{t=0;} {t++;}  END{print t;}'`
 PROJECTS_COUNT=`ls|awk '/.xcodeproj/{print $0}'|awk 'BEGIN{t=0;} {t++;}  END{print t;}'`
-INSTALL_DIRECTORY=./target
+INSTALL_DIRECTORY=./target/
 BUILD_DIRECTORY=/tmp/xcodebuild/`pwd|xargs basename`
+SHOW_TARGET=0
 PHONY=
 
 # select project
@@ -199,6 +203,8 @@ param_parse() {
     while [ -n "$1" ]
     do
         case "$1" in
+            -t|--target)
+                SHOW_TARGET=1;;
             -h|--help)
                 usage;exit;;
             -v|--version)
@@ -336,7 +342,7 @@ fi
 
 # install
 cat << EOF
-$1-install:$1
+$1-install:install_prepare $1
 `printf "\t"`@test ! -f "$build_directory/target/$scheme.ipa" || cp -rf "$build_directory/target/$scheme.ipa" "$install_directory"
 `printf "\t"`@test ! -d "$build_directory/target/$scheme" || cp -rf "$build_directory/target/$scheme" "$install_directory"
 `printf "\t"`@test ! -d "$build_directory/target/$scheme.framework" || cp -rf "$build_directory/target/$scheme.framework" "$install_directory"
@@ -362,7 +368,21 @@ elif [ -n "$PROJECT" ];then
     SCHEMES=`xcodebuild -project "$PROJECT" -list|sed -n '/Schemes/,/^$/p'|grep -v "Schemes:"|sed 's/^ *//'|sed 's/ /__-__/g'`    
 fi
 
-info "build into $BUILD_DIRECTORY ..."
+show_targets() {
+cat << EOF
+
+$SCHEMES
+
+EOF
+}
+
+if [ $SHOW_TARGET -eq 1 ];then
+show_targets
+exit
+fi
+
+info "The target[s] will build into $BUILD_DIRECTORY ..."
+
 makefile_header "$BUILD_CONFIGURATION" "$BUILD_DIRECTORY" "$INSTALL_DIRECTORY" "$SCHEMES" > Makefile
 
 for scheme in $SCHEMES; do
@@ -370,4 +390,6 @@ for scheme in $SCHEMES; do
 done
 makefile_footer >> Makefile
 
-info 'generate makefile done. type make && make install'
+info "The targets as follows:"
+show_targets
+info 'Configure done. please type `make [target]` && `make [target-]install`.'
