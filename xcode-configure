@@ -76,6 +76,10 @@ OPTION:
 -d|--enable-debug               enable debug
 -p|--prefix PATH                assign the directory for install(default is ./target)
 
+BUG:
+
+Can't support target which contains space.
+
 EOF
 }
 
