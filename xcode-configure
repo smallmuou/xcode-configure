@@ -240,7 +240,9 @@ generate_ipa=\\
     rm -rf "$build_directory/target/Payload"; \\
     mkdir -p "$build_directory/target/Payload"; \\
     cp -rf "$build_directory/Build/Products/$configuration-iphoneos/\$1.app" "$build_directory/target/Payload"; \\
-    zip -r "$build_directory/target/\$1.ipa" "$build_directory/target/Payload"; \\
+    cd "$build_directory/target"; \\
+    zip -r "\$1.ipa" "Payload"; \\
+    cd -; \\
     rm -rf "$build_directory/target/Payload"
 
 generate_lib=\\
