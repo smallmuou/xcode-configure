@@ -19,15 +19,7 @@ This command can generate makefile to build xcode project in command line just l
 	
 * Usage
 <pre>
-xcode-configure 1.0.1 by smallmuou<smallmuou@163.com>
 USAGE: xcode-configure [-t|--target] [-v|--version] [-h|--help] [-s|--enable-simulator] [-d|--enable-debug] [-p|--prefix <install directory>]
-
--t|--target                     show all targets
--v|--version                    show the version
--h|--help                       show the help
--s|--enable-simulator           enable simulator
--d|--enable-debug               enable debug
--p|--prefix PATH                assign the directory for install(default is ./target)
 </pre>
 
 ### Tips?
