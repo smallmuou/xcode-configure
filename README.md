@@ -4,101 +4,109 @@
 This command can generate makefile to build xcode project in command line just like <configure & make & make install> in C/C++ language world. Use it you can build xcode project very easy. See follow.
 ![image](https://github.com/smallmuou/xcode-configure/blob/master/xcode-configure.gif)
 
-### Why?
+### Features
+
+* Support ipa
+* Support framework
+* Support static library
+
+### Why
 * Build xcode project more easily.
 * Combine thirdpart library more easily.
 
-### How?
+### How
 * Config
-	1. Download xcode-configure to local and add to environment or alias like me follow 
+	* 1. Download xcode-configure to local and add to environment or alias like me follow 
 	<pre>
 	alias xcode-configure=/Users/starnet/Projects/xcode-configure/xcode-configure
 	</pre>
+
 	you can also add to ~/.bash_profile
-	2. Go to the xcode project root directory and type `xcode-configure`
+	
+	* 2. Go to the xcode project root directory and type `xcode-configure`
 	
 * Usage
 <pre>
 USAGE: xcode-configure [-t|--target] [-v|--version] [-h|--help] [-s|--enable-simulator] [-d|--enable-debug] [-p|--prefix <install directory>]
 </pre>
 
-### Tips?
+### Tips
 * show version
-	<pre>
+
+<pre>
 xcode-configure -v
-or 
-xcode-configure --version
 </pre>
 
 * show targets
-	<pre>
+
+<pre>
 xcode-configure -t
-or 
-xcode-configure --target
 </pre>
 
 
 * show help
-	<pre>
+
+<pre>
 xcode-configure -h
-or 
-xcode-configure --help
 </pre>
 
 * config for debug mode
-	<pre>
+
+<pre>
 xcode-configure -d
-or
-xcode-configure --enable-debug
 </pre>
 
 * support simulator
-	<pre>
+
+<pre>
 xcode-configure -s
-or
-xcode-configure --enable-simulator
 </pre>
 
 * assign a install directory
-	<pre>
+
+<pre>
 xcode-configure -p PATH
-or
-xcode-configure --prefix PATH
 </pre>
 
 * build all targets (you can use `xcodebuild -list` to show all scheme)
-	<pre>
+
+<pre>
 make
 </pre>
 
 * build a special target, like `test`
-	<pre>
+
+<pre>
 make test
 </pre>
 
 * install all target
-	<pre>
+
+<pre>
 make install
 </pre>
 
 * install a special target, like `test`
-	<pre>
+
+<pre>
 make test-install
 </pre>
 
 * clean all targets
-	<pre>
+
+<pre>
 make clean
 </pre>
 
 * clean a special target, like `test`
-	<pre>
+
+<pre>
 make test-clean
 </pre>
 
 
-### License?
+### License
 This command follow MIT License.
 
-### Contact?
+### Contact
 If you has any problem with use it, you can contact me. My E-mail is smallmuou@163.com
